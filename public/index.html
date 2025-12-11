@@ -5,29 +5,58 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>AI PDF Chat</title>
   <style>
-    body { font-family: Arial, sans-serif; margin:0; padding:0; display:flex; height:100vh; }
-    .left { width:100%; max-width:720px; margin:auto; padding:16px; }
-    .chat { border:1px solid #ddd; padding:12px; height:60vh; overflow:auto; border-radius:8px; background:#fafafa }
+    body { font-family: Arial, sans-serif; margin:0; padding:0; display:flex; height:100vh; background:#f5f5f5; }
+    .left { width:100%; max-width:800px; margin:auto; padding:20px; background:white; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.1); }
+    h1 { color:#333; margin-top:0; }
+    .section { margin-bottom:20px; }
+    .section-title { font-weight:bold; color:#555; margin-bottom:10px; }
+    .upload-box { border:2px dashed #ddd; padding:15px; border-radius:6px; background:#fafafa; }
+    .upload-box input[type="file"] { width:100%; }
+    .chat { border:1px solid #ddd; padding:12px; height:50vh; overflow:auto; border-radius:8px; background:#fafafa; margin-bottom:12px; }
     .msg { margin:8px 0; }
+    .msg { padding:8px; border-radius:4px; }
     .msg.user { text-align:right }
-    .input { display:flex; gap:8px; margin-top:12px }
-    input[type=text] { flex:1; padding:8px; }
-    button { padding:8px 12px }
-    .pdf-link { display:block; margin-top:6px; }
+    .msg.user { background:#e3f2fd; }
+    .msg.bot { background:#f1f1f1; }
+    .input-group { display:flex; gap:8px; }
+    input[type=text] { flex:1; padding:10px; border:1px solid #ddd; border-radius:4px; }
+    button { padding:10px 16px; background:#2196F3; color:white; border:none; border-radius:4px; cursor:pointer; font-weight:bold; }
+    button:hover { background:#1976D2; }
+    .pdf-link { display:inline-block; margin-top:6px; padding:6px 12px; background:#4CAF50; color:white; text-decoration:none; border-radius:4px; font-size:0.9em; }
+    .pdf-link:hover { background:#45a049; }
+    .status { padding:8px; border-radius:4px; margin-top:8px; font-size:0.9em; }
+    .status.success { background:#c8e6c9; color:#2e7d32; }
+    .status.error { background:#ffcdd2; color:#c62828; }
   </style>
 </head>
 <body>
   <div class="left">
-    <h2>AI PDF Chat</h2>
-    <div>
-      <label>Search PDFs by name:</label>
-      <input id="searchInput" type="text" placeholder="type part of a filename and press Search" />
-      <button id="searchBtn">Search</button>
+    <h1>📄 AI PDF Chat</h1>
+    
+    <div class="section">
+      <div class="section-title">📤 Upload PDF</div>
+      <div class="upload-box">
+        <input id="fileInput" type="file" accept=".pdf" />
+        <button id="uploadBtn" style="width:100%; margin-top:10px;">Upload PDF</button>
+        <div id="uploadStatus"></div>
+      </div>
     </div>
-    <div class="chat" id="chat"></div>
-    <div class="input">
-      <input id="message" type="text" placeholder="Type a message, e.g. 'Get invoice-2024'" />
-      <button id="send">Send</button>
+
+    <div class="section">
+      <div class="section-title">🔍 Search PDFs</div>
+      <div class="input-group">
+        <input id="searchInput" type="text" placeholder="Search by filename..." />
+        <button id="searchBtn">Search</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">💬 Chat</div>
+      <div class="chat" id="chat"></div>
+      <div class="input-group">
+        <input id="message" type="text" placeholder="e.g., 'Get invoice' or 'Show report'" />
+        <button id="send">Send</button>
+      </div>
     </div>
   </div>
 
