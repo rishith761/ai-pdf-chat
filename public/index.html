@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AI PDF Chat</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin:0; padding:0; display:flex; height:100vh; }
+    .left { width:100%; max-width:720px; margin:auto; padding:16px; }
+    .chat { border:1px solid #ddd; padding:12px; height:60vh; overflow:auto; border-radius:8px; background:#fafafa }
+    .msg { margin:8px 0; }
+    .msg.user { text-align:right }
+    .input { display:flex; gap:8px; margin-top:12px }
+    input[type=text] { flex:1; padding:8px; }
+    button { padding:8px 12px }
+    .pdf-link { display:block; margin-top:6px; }
+  </style>
+</head>
+<body>
+  <div class="left">
+    <h2>AI PDF Chat</h2>
+    <div>
+      <label>Search PDFs by name:</label>
+      <input id="searchInput" type="text" placeholder="type part of a filename and press Search" />
+      <button id="searchBtn">Search</button>
+    </div>
+    <div class="chat" id="chat"></div>
+    <div class="input">
+      <input id="message" type="text" placeholder="Type a message, e.g. 'Get invoice-2024'" />
+      <button id="send">Send</button>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
