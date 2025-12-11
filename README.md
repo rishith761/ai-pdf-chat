@@ -72,3 +72,20 @@ This is a minimal demo. If you expose this server to the public internet:
 - Add authentication or password-protect the UI.
 - Use more robust path validation.
 - Run behind a reverse proxy (nginx, etc.).
+
+## Production: fast uploads with S3 presigned URLs (recommended)
+
+For public deployment and large files, use AWS S3 with presigned uploads. Set these environment variables on your host (or in Vercel):
+
+- `AWS_REGION` — e.g. `us-east-1`
+- `S3_BUCKET` — your S3 bucket name
+- (optional) `UPLOAD_KEY` — set a secret string to require a client-side key when requesting presigned URLs
+
+How it works:
+- The browser requests `/api/presign` with filename and contentType. The server returns a short-lived presigned PUT URL.
+- The browser uploads the file directly to S3 using that URL (no server bandwidth used).
+- The server can list S3 PDFs via `/api/pdfs`, and `/pdf/:filename` will redirect to a presigned GET URL when the file is stored in S3.
+
+On Vercel: add `AWS_REGION`, `S3_BUCKET`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and (optionally) `UPLOAD_KEY` to your project Environment Variables. Keep `UPLOAD_KEY` secret and only provide it to authorized users.
+
+This approach improves upload speed, scales well, and keeps your server stateless.

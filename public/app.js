@@ -30,24 +30,70 @@ async function uploadPDF() {
   uploadStatus.innerHTML = '<div class="status">Uploading...</div>';
 
   try {
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const base64 = e.target.result.split(',')[1];
-      const res = await fetch('/api/upload', {
+    // Request a presigned URL from the server
+    const presign = async (apiKey) => {
+      const headers = { 'Content-Type': 'application/json' };
+      if (apiKey) headers['x-api-key'] = apiKey;
+      const r = await fetch('/api/presign', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename: file.name, data: base64 })
+        headers,
+        body: JSON.stringify({ filename: file.name, contentType: file.type })
       });
-      const data = await res.json();
-      if (data.success) {
-        uploadStatus.innerHTML = `<div class="status success">✓ ${data.message}</div>`;
-        fileInput.value = '';
-        addMessage(`<b>PDF uploaded:</b> ${escapeHtml(file.name)}`);
-      } else {
-        uploadStatus.innerHTML = `<div class="status error">✗ ${data.error}</div>`;
-      }
+      return r;
     };
-    reader.readAsDataURL(file);
+
+    let res = await presign();
+    if (res.status === 403) {
+      // Server requires an upload key -> ask the user
+      const key = prompt('Upload key required. Please enter the upload key:');
+      if (!key) {
+        uploadStatus.innerHTML = '<div class="status error">Upload cancelled (no key)</div>';
+        return;
+      }
+      res = await presign(key);
+    }
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      uploadStatus.innerHTML = `<div class="status error">Presign failed: ${body.error || res.statusText}</div>`;
+      return;
+    }
+
+    const data = await res.json();
+    const uploadUrl = data.uploadUrl;
+    if (!uploadUrl) {
+      uploadStatus.innerHTML = '<div class="status error">No upload URL returned</div>';
+      return;
+    }
+
+    // Upload directly to S3 via PUT with progress using XHR
+    await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('PUT', uploadUrl, true);
+      xhr.setRequestHeader('Content-Type', file.type || 'application/pdf');
+      xhr.upload.onprogress = (ev) => {
+        if (ev.lengthComputable) {
+          const pct = Math.round((ev.loaded / ev.total) * 100);
+          uploadStatus.innerHTML = `<div class="status">Uploading... ${pct}%</div>`;
+        }
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          uploadStatus.innerHTML = `<div class="status success">✓ Uploaded ${escapeHtml(file.name)}</div>`;
+          fileInput.value = '';
+          addMessage(`<b>PDF uploaded:</b> ${escapeHtml(file.name)}`);
+          resolve();
+        } else {
+          uploadStatus.innerHTML = `<div class="status error">Upload failed: ${xhr.status} ${xhr.statusText}</div>`;
+          reject(new Error('Upload failed'));
+        }
+      };
+      xhr.onerror = () => {
+        uploadStatus.innerHTML = '<div class="status error">Network error during upload</div>';
+        reject(new Error('Network error'));
+      };
+      xhr.send(file);
+    });
   } catch (err) {
     uploadStatus.innerHTML = '<div class="status error">Upload failed</div>';
     console.error(err);

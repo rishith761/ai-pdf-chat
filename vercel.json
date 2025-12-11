@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "builds": [
+    { "src": "api/**/*.js", "use": "@vercel/node" }
+  ],
+  "rewrites": [
+    { "source": "/pdf/:path*", "destination": "/api/pdf/:path*" },
+    { "source": "/api/:path*", "destination": "/api/:path*" }
+  ]
+}
