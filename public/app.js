@@ -30,7 +30,7 @@ async function uploadPDF() {
   uploadStatus.innerHTML = '<div class="status">Uploading...</div>';
 
   try {
-    // Try presigned URL first (S3 mode)
+    // Request a presigned URL from the server
     const presign = async (apiKey) => {
       const headers = { 'Content-Type': 'application/json' };
       if (apiKey) headers['x-api-key'] = apiKey;
@@ -53,63 +53,47 @@ async function uploadPDF() {
       res = await presign(key);
     }
 
-    // If presign works, use S3 direct upload
-    if (res.ok) {
-      const data = await res.json();
-      const uploadUrl = data.uploadUrl;
-      if (uploadUrl) {
-        // Upload directly to S3 via PUT with progress
-        await new Promise((resolve, reject) => {
-          const xhr = new XMLHttpRequest();
-          xhr.open('PUT', uploadUrl, true);
-          xhr.setRequestHeader('Content-Type', file.type || 'application/pdf');
-          xhr.upload.onprogress = (ev) => {
-            if (ev.lengthComputable) {
-              const pct = Math.round((ev.loaded / ev.total) * 100);
-              uploadStatus.innerHTML = `<div class="status">Uploading to S3... ${pct}%</div>`;
-            }
-          };
-          xhr.onload = () => {
-            if (xhr.status >= 200 && xhr.status < 300) {
-              uploadStatus.innerHTML = `<div class="status success">✓ Uploaded ${escapeHtml(file.name)}</div>`;
-              fileInput.value = '';
-              addMessage(`<b>PDF uploaded to S3:</b> ${escapeHtml(file.name)}`);
-              resolve();
-            } else {
-              uploadStatus.innerHTML = `<div class="status error">S3 upload failed: ${xhr.status}</div>`;
-              reject(new Error('S3 upload failed'));
-            }
-          };
-          xhr.onerror = () => {
-            uploadStatus.innerHTML = '<div class="status error">Network error during S3 upload</div>';
-            reject(new Error('Network error'));
-          };
-          xhr.send(file);
-        });
-        return;
-      }
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      uploadStatus.innerHTML = `<div class="status error">Presign failed: ${body.error || res.statusText}</div>`;
+      return;
     }
 
-    // Fallback: use base64 upload to server (in-memory storage)
-    uploadStatus.innerHTML = '<div class="status">Uploading to server (in-memory)...</div>';
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const base64 = e.target.result.split(',')[1];
-      const uploadRes = await fetch('/api/upload', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename: file.name, data: base64 })
-      });
-      const uploadData = await uploadRes.json();
-      if (uploadData.success) {
-        uploadStatus.innerHTML = `<div class="status success">✓ ${uploadData.message}</div>`;
-        fileInput.value = '';
-        addMessage(`<b>PDF uploaded:</b> ${escapeHtml(file.name)}`);
-      } else {
-        uploadStatus.innerHTML = `<div class="status error">✗ ${uploadData.error}</div>`;
-      }
-    };
-    reader.readAsDataURL(file);
+    const data = await res.json();
+    const uploadUrl = data.uploadUrl;
+    if (!uploadUrl) {
+      uploadStatus.innerHTML = '<div class="status error">No upload URL returned</div>';
+      return;
+    }
+
+    // Upload directly to S3 via PUT with progress using XHR
+    await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('PUT', uploadUrl, true);
+      xhr.setRequestHeader('Content-Type', file.type || 'application/pdf');
+      xhr.upload.onprogress = (ev) => {
+        if (ev.lengthComputable) {
+          const pct = Math.round((ev.loaded / ev.total) * 100);
+          uploadStatus.innerHTML = `<div class="status">Uploading... ${pct}%</div>`;
+        }
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          uploadStatus.innerHTML = `<div class="status success">✓ Uploaded ${escapeHtml(file.name)}</div>`;
+          fileInput.value = '';
+          addMessage(`<b>PDF uploaded:</b> ${escapeHtml(file.name)}`);
+          resolve();
+        } else {
+          uploadStatus.innerHTML = `<div class="status error">Upload failed: ${xhr.status} ${xhr.statusText}</div>`;
+          reject(new Error('Upload failed'));
+        }
+      };
+      xhr.onerror = () => {
+        uploadStatus.innerHTML = '<div class="status error">Network error during upload</div>';
+        reject(new Error('Network error'));
+      };
+      xhr.send(file);
+    });
   } catch (err) {
     uploadStatus.innerHTML = '<div class="status error">Upload failed</div>';
     console.error(err);
